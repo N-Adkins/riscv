@@ -21,10 +21,15 @@ void cpu_init(struct cpu *cpu)
 
 void cpu_run_next(struct cpu *cpu)
 {
-    u32 pc;
-    u8 op;
     struct instruction instr;
-
+    struct r_instruction r_instr;
+    struct i_instruction i_instr;
+    struct s_instruction s_instr;
+    struct u_instruction u_instr;
+    RISCV_XLEN pc;
+    u8 op;
+    u8 op_map;
+    
     pc = cpu->x_reg[RISCV_PC_IDX];
     if (pc + 3 > RISCV_MEM_MAX - 1) { /* Addressing safety check */
         exit(1);
@@ -38,8 +43,9 @@ void cpu_run_next(struct cpu *cpu)
         ((u32)cpu->memory[pc] << 24);
     
     op = instruction_get_op(instr);
-    switch(op) {
-    
+    op_map = op >> 2;
+    switch(op_map) {
+    case RISCV_MAP_OP_IMM:
     default:
         printf("Unhandled opcode 0x%02X\n", op);
         break;
