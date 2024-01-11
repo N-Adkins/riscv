@@ -3,15 +3,15 @@
 .text
 main:
     addi x6, x0, 0x100
-    addi x5, x0, 0x5A
+    addi x5, x0, 'T'
     sb x5, 0(x6)
-    addi x5, x0, 0x41
+    addi x5, x0, 'E'
     sb x5, 0(x6)
-    addi x5, x0, 0x4D
+    addi x5, x0, 'S'
     sb x5, 0(x6)
-    addi x5, x0, 0x4E
+    addi x5, x0, 'T'
     sb x5, 0(x6)
-    addi x5, x0, 0x21
+    addi x5, x0, '!'
     sb x5, 0(x6)
     addi x5, x0, 0xFF
     sb x5, 0(x6)
