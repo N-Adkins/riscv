@@ -73,7 +73,7 @@ void cpu_run_next(struct cpu *cpu)
     op = instruction_get_op(instr);
     op_map = op >> 2;
 
-    printf("Executing 0x%02X\n", instr.raw);
+    /* printf("Executing 0x%02X\n", instr.raw); */
 
     switch(op_map) {
     
@@ -111,7 +111,8 @@ void cpu_run_next(struct cpu *cpu)
             break;
 
         default:
-            printf("Unhandled OP_IMM function 0x%02X\n", i_instr.funct3);
+            /* printf("Unhandled OP_IMM function 0x%02X\n", i_instr.funct3); */
+            break;
         }
 
         break;
@@ -167,7 +168,7 @@ void cpu_run_next(struct cpu *cpu)
             break;
         
         default:
-            printf("Unhandled OP funct3 0x%02X w/ funct7 0x%02X\n", r_instr.funct3, r_instr.funct7);
+            /* printf("Unhandled OP funct3 0x%02X w/ funct7 0x%02X\n", r_instr.funct3, r_instr.funct7); */
             break;
         }
 
@@ -208,7 +209,7 @@ void cpu_run_next(struct cpu *cpu)
         }
 
         default:
-            printf("Unhandled LOAD funct3 0x%02X\n", i_instr.funct3);
+            /* printf("Unhandled LOAD funct3 0x%02X\n", i_instr.funct3); */
             break;
         }
 
@@ -227,23 +228,23 @@ void cpu_run_next(struct cpu *cpu)
         case RISCV_INSTR_SH: {
             u32 value = cpu->x_reg[s_instr.rs2];
             u32 index = s_instr.imm_11_5 + cpu->x_reg[s_instr.rs1];
-            cpu->memory[index] = value & 0xFF00;
-            cpu->memory[index + 1] = value & 0xFF;
+            cpu->memory[index + 1] = value & 0xFF00;
+            cpu->memory[index] = value & 0xFF;
             break;
         }
 
         case RISCV_INSTR_SW: {
             u32 value = cpu->x_reg[s_instr.rs2];
             u32 index = s_instr.imm_11_5 + cpu->x_reg[s_instr.rs1];
-            cpu->memory[index] = value & 0xFF000000;
-            cpu->memory[index + 1] = value & 0xFF0000;
-            cpu->memory[index + 2] = value & 0xFF00;
-            cpu->memory[index + 3] = value & 0xFF;
+            cpu->memory[index + 3] = value & 0xFF000000;
+            cpu->memory[index + 2] = value & 0xFF0000;
+            cpu->memory[index + 1] = value & 0xFF00;
+            cpu->memory[index] = value & 0xFF;
             break;
         }
 
         default:
-            printf("Unhandled STORE funct3 0x%02X\n", i_instr.funct3);
+            /* printf("Unhandled STORE funct3 0x%02X\n", i_instr.funct3); */
             break;
         }
 
@@ -251,9 +252,9 @@ void cpu_run_next(struct cpu *cpu)
     }
 
     default:
-        printf("Unhandled opcode 0x%02X\n", op);
+        /* printf("Unhandled opcode 0x%02X\n", op); */
         break;
     }
 
-    cpu->x_reg[RISCV_PC_IDX]++;
+    cpu->x_reg[RISCV_PC_IDX] += 4;
 }
