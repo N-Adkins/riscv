@@ -17,6 +17,7 @@ void cpu_init(struct cpu *cpu)
 
     cpu->memory = memory;
     memset(cpu->x_reg, 0, sizeof(u32) * RISCV_REG_COUNT);
+    cpu->x_reg[RISCV_PC_IDX] = 0x80;
 }
 
 void cpu_load_kernel(struct cpu *cpu, const char *file)
@@ -45,6 +46,14 @@ CLEANUP:;
     fclose(file_ptr);
 }
 
+#define TRACE_ON
+
+#ifdef TRACE_ON
+#define OP_TRACE(op) case op: if (instr.raw != 0) { printf("Executing instruction %s 0x%02X\n", #op, instr.raw); }
+#else
+#define OP_TRACE(op) case op:
+#endif
+
 void cpu_run_next(struct cpu *cpu)
 {
     struct instruction instr;
@@ -67,13 +76,11 @@ void cpu_run_next(struct cpu *cpu)
      * This can be done faster with type punning and abusing host system endianness but
      * I'm not doing that unless I have to
      */
-    instr.raw = ((RISCV_XLEN)cpu->memory[pc + 3]) | (((RISCV_XLEN)(cpu->memory[pc + 2])) << 8) | (((RISCV_XLEN)cpu->memory[pc + 1]) << 16) | 
-        (((RISCV_XLEN)cpu->memory[pc]) << 24);
+    instr.raw = (((RISCV_XLEN)cpu->memory[pc + 3]) << 24) | (((RISCV_XLEN)(cpu->memory[pc + 2])) << 16) | (((RISCV_XLEN)cpu->memory[pc + 1]) << 8) | 
+        (((RISCV_XLEN)cpu->memory[pc]));
     
     op = instruction_get_op(instr);
     op_map = op >> 2;
-
-    /* printf("Executing 0x%02X\n", instr.raw); */
 
     switch(op_map) {
     
@@ -82,7 +89,7 @@ void cpu_run_next(struct cpu *cpu)
 
         switch (i_instr.funct3) {
 
-        case RISCV_INSTR_ADDI:
+        OP_TRACE(RISCV_INSTR_ADDI)
             if (i_instr.rd == 0 && i_instr.imm_11_0 == 0 && i_instr.rs1 == 0) {
                 /* NOP */
                 break;
@@ -90,28 +97,29 @@ void cpu_run_next(struct cpu *cpu)
             cpu->x_reg[i_instr.rd] = i_instr.imm_11_0 + cpu->x_reg[i_instr.rs1];
             break;
 
-        case RISCV_INSTR_SLTI:
+        OP_TRACE(RISCV_INSTR_SLTI)
             cpu->x_reg[i_instr.rd] = ((i32)cpu->x_reg[i_instr.rs1]) < i_instr.imm_11_0;
             break;
 
-        case RISCV_INSTR_SLTIU:
+        OP_TRACE(RISCV_INSTR_SLTIU)
             cpu->x_reg[i_instr.rd] = cpu->x_reg[i_instr.rs1] < ((u32)i_instr.imm_11_0);
             break;
 
-        case RISCV_INSTR_XORI:
+        OP_TRACE(RISCV_INSTR_XORI)
             cpu->x_reg[i_instr.rd] = cpu->x_reg[i_instr.rs1] ^ i_instr.imm_11_0;
             break;
 
-        case RISCV_INSTR_ORI:
+        OP_TRACE(RISCV_INSTR_ORI)
             cpu->x_reg[i_instr.rd] = cpu->x_reg[i_instr.rs1] | i_instr.imm_11_0;
             break;
         
-        case RISCV_INSTR_ANDI:
+        OP_TRACE(RISCV_INSTR_ANDI)
             cpu->x_reg[i_instr.rd] = cpu->x_reg[i_instr.rs1] & i_instr.imm_11_0;
             break;
 
         default:
-            /* printf("Unhandled OP_IMM function 0x%02X\n", i_instr.funct3); */
+            printf("Unhandled OP_IMM function 0x%02X\n", i_instr.funct3);
+            exit(1);
             break;
         }
 
@@ -123,7 +131,7 @@ void cpu_run_next(struct cpu *cpu)
 
         switch (r_instr.funct3) {
         
-        case RISCV_INSTR_ADD_SUB:
+        OP_TRACE(RISCV_INSTR_ADD_SUB)
             if (r_instr.funct7) {
                 /* ADD */
                 cpu->x_reg[r_instr.rd] = cpu->x_reg[r_instr.rs1] + cpu->x_reg[r_instr.rs2];
@@ -133,23 +141,23 @@ void cpu_run_next(struct cpu *cpu)
             }
             break;
 
-        case RISCV_INSTR_SLL:
+        OP_TRACE(RISCV_INSTR_SLL)
             cpu->x_reg[r_instr.rs1] <<= (cpu->x_reg[r_instr.rs2] & 0x1F);
             break;
 
-        case RISCV_INSTR_SLT:
+        OP_TRACE(RISCV_INSTR_SLT)
             cpu->x_reg[r_instr.rd] = ((i32)((cpu->x_reg[r_instr.rs1] & 0x10) << 27)) < ((i32)((cpu->x_reg[r_instr.rs2] & 0x10) << 27));
             break;
 
-        case RISCV_INSTR_SLTU:
+        OP_TRACE(RISCV_INSTR_SLTU)
             cpu->x_reg[r_instr.rd] = cpu->x_reg[r_instr.rs1] < cpu->x_reg[r_instr.rs2];
             break;
 
-        case RISCV_INSTR_XOR:
+        OP_TRACE(RISCV_INSTR_XOR)
             cpu->x_reg[r_instr.rd] = cpu->x_reg[r_instr.rs1] ^ cpu->x_reg[r_instr.rs2];
             break;
 
-        case RISCV_INSTR_SRL_SRA:
+        OP_TRACE(RISCV_INSTR_SRL_SRA)
             if (r_instr.funct7) {
                 /* SRL */ 
                 cpu->x_reg[r_instr.rd] = cpu->x_reg[r_instr.rs1] << cpu->x_reg[r_instr.rs2];
@@ -159,16 +167,17 @@ void cpu_run_next(struct cpu *cpu)
             }
             break;
 
-        case RISCV_INSTR_OR:
+        OP_TRACE(RISCV_INSTR_OR)
             cpu->x_reg[r_instr.rd] = cpu->x_reg[r_instr.rs1] | cpu->x_reg[r_instr.rs2];
             break;
 
-        case RISCV_INSTR_AND:
+        OP_TRACE(RISCV_INSTR_AND)
             cpu->x_reg[r_instr.rd] = cpu->x_reg[r_instr.rs1] & cpu->x_reg[r_instr.rs2];
             break;
         
         default:
-            /* printf("Unhandled OP funct3 0x%02X w/ funct7 0x%02X\n", r_instr.funct3, r_instr.funct7); */
+            printf("Unhandled OP funct3 0x%02X w/ funct7 0x%02X\n", r_instr.funct3, r_instr.funct7);
+            exit(1);
             break;
         }
 
@@ -180,28 +189,28 @@ void cpu_run_next(struct cpu *cpu)
         
         switch (i_instr.funct3) {
             
-        case RISCV_INSTR_LB: {
+        OP_TRACE(RISCV_INSTR_LB) {
             u32 value = cpu->memory[i_instr.imm_11_0 + i_instr.rs1];
             cpu->x_reg[i_instr.rd] = value | ((value >> 7) << 31);
             break;
         }
 
-        case RISCV_INSTR_LH: {
+        OP_TRACE(RISCV_INSTR_LH) {
             u32 index = i_instr.imm_11_0 + i_instr.rs1; 
             u32 value = cpu->memory[index] | (cpu->memory[index + 1] << 8);
             cpu->x_reg[i_instr.rd] = value | ((value >> 15) << 31);
             break;
         }
 
-        case RISCV_INSTR_LW: 
+        OP_TRACE(RISCV_INSTR_LW)
             cpu->x_reg[i_instr.rd] = cpu->memory[i_instr.imm_11_0 + i_instr.rs1];
             break;
 
-        case RISCV_INSTR_LBU:
+        OP_TRACE(RISCV_INSTR_LBU)
             cpu->x_reg[i_instr.rd] = cpu->memory[i_instr.imm_11_0 + i_instr.rs1];
             break;
 
-        case RISCV_INSTR_LHU: {
+        OP_TRACE(RISCV_INSTR_LHU) {
             u32 index = i_instr.imm_11_0 + i_instr.rs1; 
             u32 value = cpu->memory[index] | (cpu->memory[index + 1] << 8);
             cpu->x_reg[i_instr.rd] = value;
@@ -209,7 +218,8 @@ void cpu_run_next(struct cpu *cpu)
         }
 
         default:
-            /* printf("Unhandled LOAD funct3 0x%02X\n", i_instr.funct3); */
+            printf("Unhandled LOAD funct3 0x%02X\n", i_instr.funct3);
+            exit(1);
             break;
         }
 
@@ -221,11 +231,11 @@ void cpu_run_next(struct cpu *cpu)
 
         switch (s_instr.funct3) {
         
-        case RISCV_INSTR_SB:
+        OP_TRACE(RISCV_INSTR_SB)
             cpu->memory[s_instr.imm_11_5 + cpu->x_reg[s_instr.rs1]] = cpu->x_reg[s_instr.rs2] & 0xFF;
             break;
 
-        case RISCV_INSTR_SH: {
+        OP_TRACE(RISCV_INSTR_SH) {
             u32 value = cpu->x_reg[s_instr.rs2];
             u32 index = s_instr.imm_11_5 + cpu->x_reg[s_instr.rs1];
             cpu->memory[index + 1] = value & 0xFF00;
@@ -233,7 +243,7 @@ void cpu_run_next(struct cpu *cpu)
             break;
         }
 
-        case RISCV_INSTR_SW: {
+        OP_TRACE(RISCV_INSTR_SW) {
             u32 value = cpu->x_reg[s_instr.rs2];
             u32 index = s_instr.imm_11_5 + cpu->x_reg[s_instr.rs1];
             cpu->memory[index + 3] = value & 0xFF000000;
@@ -244,7 +254,8 @@ void cpu_run_next(struct cpu *cpu)
         }
 
         default:
-            /* printf("Unhandled STORE funct3 0x%02X\n", i_instr.funct3); */
+            printf("Unhandled STORE funct3 0x%02X\n", s_instr.funct3);
+            exit(1);
             break;
         }
 
@@ -252,7 +263,8 @@ void cpu_run_next(struct cpu *cpu)
     }
 
     default:
-        /* printf("Unhandled opcode 0x%02X\n", op); */
+        printf("Unhandled opcode 0x%02X\n", op_map);
+        exit(1);
         break;
     }
 

@@ -1,18 +1,17 @@
-void print(const char *text);
+char *serial_out = (char *)0x100;
 
-char *serial = (char *)0x1000000;
+void print(const char *str);
 
 int main(void)
 {
-    print("Test\n");
+    print("TEST\n");
     return 0;
 }
 
-void print(const char *text)
+void print(const char *str) 
 {
-    char *current = (char*)text;
-    while (*current != '\0') {
-        *serial = *current;
-        current++; 
+    char *current = (char*)str;
+    while (*current++) {
+        *serial_out = *current;
     }
 }

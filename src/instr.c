@@ -2,7 +2,7 @@
 
 u8 instruction_get_op(struct instruction instr)
 {
-    return instr.raw & 0x7;
+    return instr.raw & 0x3F;
 }
 
 void instruction_get_r(struct instruction instr, struct r_instruction *r_instr)
