@@ -54,7 +54,7 @@ CLEANUP:;
 #define OP_TRACE(op) case op:
 #endif
 
-void cpu_run_next(struct cpu *cpu)
+struct instruction cpu_run_next(struct cpu *cpu)
 {
     struct instruction instr;
     struct r_instruction r_instr;
@@ -269,4 +269,6 @@ void cpu_run_next(struct cpu *cpu)
     }
 
     cpu->x_reg[RISCV_PC_IDX] += 4;
+
+    return instr;
 }

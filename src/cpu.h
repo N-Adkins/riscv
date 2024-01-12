@@ -1,6 +1,7 @@
 #ifndef RISCV_SRC_CPU_H
 #define RISCV_SRC_CPU_H
 
+#include "instr.h"
 #include "types.h"
 
 typedef uint32_t RISCV_XLEN;
@@ -64,6 +65,6 @@ struct cpu {
 
 void cpu_init(struct cpu *cpu);
 void cpu_load_kernel(struct cpu *cpu, const char *file);
-void cpu_run_next(struct cpu *cpu);
+struct instruction cpu_run_next(struct cpu *cpu);
 
 #endif
